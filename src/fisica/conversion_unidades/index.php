@@ -100,7 +100,7 @@
     <script src="../../js/footer-fix.js"></script>
     <script src="../../js/nouislider.min.js"></script>
     <script src="../../js/feather.min.js"></script>
-    <script src="../../js/decimal.js"></script>
+    <script src="decimal.min.js"></script>
     <script src="../../js/core/dist/app.bundle.js"></script>
     <script src="main.js"></script>
     <script>
