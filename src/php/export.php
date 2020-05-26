@@ -10,7 +10,7 @@
         if ($_SERVER['SERVER_NAME'] == "localhost" || in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'])) {
 
             // Get data from POST request.
-            $path = '..' . $_POST['path'];
+            $path = '/var/www/html/' . $_POST['path'];
             $img = $_POST['data'];
             
             if (is_dir($path)) {
