@@ -1,0 +1,12 @@
+version: '3'
+services:
+    web:
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        ports:
+            - "3000:80"
+        volumes:
+            - ./:/var/www/html/
+            - ../newtondreams-lib/dist/:/var/www/html/js/core/dist/
+            - ../newtondreams-lib/docs/:/var/www/html/js/core/docs/

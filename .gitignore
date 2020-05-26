@@ -1,0 +1,5 @@
+.vscode
+.DS_STORE
+divyx/descargas/*
+js/core/node_modules/*
+node_modules/
