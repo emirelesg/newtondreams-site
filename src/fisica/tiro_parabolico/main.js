@@ -1,29 +1,29 @@
 // Constants
-var TIME_STEP = 0.05;       // Step of time every iteration of the draw function.
-var BALL_AMOUNT = 4;              // Amount of balls.
+var TIME_STEP = 0.05; // Step of time every iteration of the draw function.
+var BALL_AMOUNT = 4; // Amount of balls.
 
 // Variables
-var vx0 = 0;                // Initial x velocity.
-var points = [];            // 2d array with the values of the simulation.
-var frame = 0;              // Current frame of the simulation.
-var started = false;        // Determines if the simulations is running.
+var vx0 = 0; // Initial x velocity.
+var points = []; // 2d array with the values of the simulation.
+var frame = 0; // Current frame of the simulation.
+var started = false; // Determines if the simulations is running.
 
 // p$ Objeccts
 var w;
 var dc = new p$.DataCursor();
 var ballLabels = new p$.Shape(drawBallLabels);
 var ball = new p$.Ball(2.5, { color: p$.COLORS.BLUE, isDraggable: false });
-var vel = new p$.Vector( { color: p$.COLORS.PURPLE, components: true } );
-var path = new p$.Plot( { color: p$.COLORS.BLUE } );
-var box = new p$.Box( { debug: false, title: "Resultados", isDraggable: false } );
-var balls = [];         // Array of p$.Balls.
+var vel = new p$.Vector({ color: p$.COLORS.PURPLE, components: true });
+var path = new p$.Plot({ color: p$.COLORS.BLUE });
+var box = new p$.Box({ debug: false, title: 'Resultados', isDraggable: false });
+var balls = []; // Array of p$.Balls.
 var labels = {};
 var controls = {};
 
 /**
  * Function runs when document is completely loaded.
  */
-$(function() {
+$(function () {
   setup();
   setupControls();
   reset();
@@ -34,16 +34,19 @@ $(function() {
  * Initialize world and set up other objects.
  */
 function setup() {
-
   // Configure the world.
-  w = new p$.World("canvasContainer", draw, resize);
-  w.scaleX.set(50, 10, "m");
-  w.scaleY.set(50, -10, "m");
+  w = new p$.World('canvasContainer', draw, resize);
+  w.scaleX.set(50, 10, 'm');
+  w.scaleY.set(50, -10, 'm');
 
   // Add steps amount of balls.
   // Creates an object with obj, time and vy property.
   for (var i = 0; i < BALL_AMOUNT; i++) {
-    var b = new p$.Ball(2.5, { color: p$.COLORS.GRAY, display: true, isDraggable: false });
+    var b = new p$.Ball(2.5, {
+      color: p$.COLORS.GRAY,
+      display: true,
+      isDraggable: false
+    });
     b.setZ(3);
     b.display = false;
     balls.push({
@@ -55,11 +58,19 @@ function setup() {
   }
 
   // Configure box and add labels for vx and vy.
-  labels.vx = box.addLabel(110, 14, { name: "Vx", units: "m/s", labelWidth: 35 });
+  labels.vx = box.addLabel(110, 14, {
+    name: 'Vx',
+    units: 'm/s',
+    labelWidth: 35
+  });
   labels.vx.setPosition(0, 25);
-  labels.vy = box.addLabel(110, 14, { name: "Vy", units: "m/s", labelWidth: 35 });
+  labels.vy = box.addLabel(110, 14, {
+    name: 'Vy',
+    units: 'm/s',
+    labelWidth: 35
+  });
   labels.vy.setPosition(0, 50);
-  labels.t = box.addLabel(110, 14, { name: "t", units: "s", labelWidth: 35 });
+  labels.t = box.addLabel(110, 14, { name: 't', units: 's', labelWidth: 35 });
   labels.t.setPosition(0, 75);
   box.calculateDimensions();
 
@@ -82,39 +93,64 @@ function setup() {
  * Setup DOM elements.
  */
 function setupControls() {
-  
   // // Configure sliders.
-  controls.v0 = new p$.Slider({ id: "v0", start: 30, min: 20, max: 40, decPlaces: 1, units: "m/s", callback: reset, color: p$.COLORS.RED });
-  controls.y0 = new p$.Slider({ id: "y0", start: 0, min: 0, max: 30, decPlaces: 0, units: "m", callback: reset, color: p$.COLORS.BLUE });
-  controls.angle = new p$.Slider({ id: "angle", start: 40, min: 0, max: 90, decPlaces: 0, units: "°", callback: reset, color: p$.COLORS.GREEN });
-  
+  controls.v0 = new p$.Slider({
+    id: 'v0',
+    start: 30,
+    min: 20,
+    max: 40,
+    decPlaces: 1,
+    units: 'm/s',
+    callback: reset,
+    color: p$.COLORS.RED
+  });
+  controls.y0 = new p$.Slider({
+    id: 'y0',
+    start: 0,
+    min: 0,
+    max: 30,
+    decPlaces: 0,
+    units: 'm',
+    callback: reset,
+    color: p$.COLORS.BLUE
+  });
+  controls.angle = new p$.Slider({
+    id: 'angle',
+    start: 40,
+    min: 0,
+    max: 90,
+    decPlaces: 0,
+    units: '°',
+    callback: reset,
+    color: p$.COLORS.GREEN
+  });
+
   // Buttons.
-  controls.start = new p$.dom.Button("start", function() {
+  controls.start = new p$.dom.Button('start', function () {
     // Reset the simulation only if the simulation has ended.
     if (frame >= points.length - 1) reset();
     started = true;
   });
-  controls.pause = new p$.dom.Button("pause", function() {
+  controls.pause = new p$.dom.Button('pause', function () {
     started = false;
   });
-  controls.forward = new p$.dom.Button("forward", function() {
+  controls.forward = new p$.dom.Button('forward', function () {
     started = false;
     frame += 1;
     if (frame >= points.length) frame = points.length - 1;
   });
-  controls.back = new p$.dom.Button("back", function() {
+  controls.back = new p$.dom.Button('back', function () {
     started = false;
     frame -= 1;
     if (frame < 0) frame = 0;
   });
-  controls.reset = new p$.dom.Button("reset", function() {
+  controls.reset = new p$.dom.Button('reset', function () {
     started = false;
     frame = 0;
   });
 
   // Show points option.
-  controls.showRefPoints = new p$.dom.Option("showPoints");
-
+  controls.showRefPoints = new p$.dom.Option('showPoints');
 }
 
 /**
@@ -122,15 +158,9 @@ function setupControls() {
  * Called when any slider changes values.
  */
 function reset() {
-
   // Calculate the position and velocity of the projectile at a given time.
   function calc(t, vx0, vy0, y0) {
-    return [
-      t, 
-      vx0 * t, 
-      y0 + vy0 * t - 0.5 * 9.81 * t * t, 
-      vy0 - 9.81 * t 
-    ];
+    return [t, vx0 * t, y0 + vy0 * t - 0.5 * 9.81 * t * t, vy0 - 9.81 * t];
   }
 
   // Restart simulation.
@@ -142,11 +172,11 @@ function reset() {
   var vy0 = vel.y;
   var y0 = controls.y0.value;
   vx0 = vel.x;
-  
+
   // Using the quadratic formula get the positive solution to the time
   // the ball takes to reach ground again.
-  var tFinal1 = (-vy0 + Math.sqrt(vy0 * vy0 - 4 * (-9.81/2) * y0)) / (-9.81);
-  var tFinal2 = (-vy0 - Math.sqrt(vy0 * vy0 - 4 * (-9.81/2) * y0)) / (-9.81);
+  var tFinal1 = (-vy0 + Math.sqrt(vy0 * vy0 - 4 * (-9.81 / 2) * y0)) / -9.81;
+  var tFinal2 = (-vy0 - Math.sqrt(vy0 * vy0 - 4 * (-9.81 / 2) * y0)) / -9.81;
   var tFinal = tFinal1 > 0 ? tFinal1 : tFinal2;
 
   // Simulate the throw and store all points in the array.
@@ -184,7 +214,6 @@ function reset() {
     // Hide ball by moving it to (0, -1000).
     balls[3].obj.setPosition(0, -1000);
   }
-
 }
 
 /**
@@ -194,8 +223,16 @@ function drawBallLabels() {
   for (var i = 0; i < balls.length; i++) {
     var b = balls[i];
     if (b.obj.display) {
-      ballLabels.text("Vy: " + p$.utils.round(b.vy, 1) + " m/s", b.obj.position.x, b.obj.position.y + 4);
-      ballLabels.text(p$.utils.round(b.t, 2) + " s", b.obj.position.x, b.obj.position.y + 8);
+      ballLabels.text(
+        'Vy: ' + p$.utils.round(b.vy, 1) + ' m/s',
+        b.obj.position.x,
+        b.obj.position.y + 4
+      );
+      ballLabels.text(
+        p$.utils.round(b.t, 2) + ' s',
+        b.obj.position.x,
+        b.obj.position.y + 8
+      );
     }
   }
 }
@@ -204,10 +241,10 @@ function drawBallLabels() {
  * Function gets called 60x per second.
  */
 function draw() {
-
   // Get the current time, position, and velocity values.
   var t = points[frame][0];
-  var x = points[frame][1], y = points[frame][2];
+  var x = points[frame][1],
+    y = points[frame][2];
   var vy = points[frame][3];
 
   // Draw plot til the current point.
@@ -217,7 +254,7 @@ function draw() {
   }
 
   // Draw reference balls til the current point.
-  for (var i = 0; i < balls.length; i++) {
+  for (i = 0; i < balls.length; i++) {
     balls[i].obj.display = t >= balls[i].t && controls.showRefPoints.value;
   }
 
@@ -227,10 +264,10 @@ function draw() {
   vel.set(vx0, vy);
 
   // Update labels.
-  labels.vx.set(vx0)
+  labels.vx.set(vx0);
   labels.vy.set(vy);
   labels.t.set(t);
-  
+
   // Increase current frame only if the simulation has not started.
   if (started) {
     if (frame < points.length - 1) {
@@ -246,7 +283,6 @@ function draw() {
   controls.start.enabled(!started);
   controls.pause.enabled(started);
   controls.reset.enabled(started || frame > 0);
-
 }
 
 /**

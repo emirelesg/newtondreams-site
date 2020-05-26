@@ -4,7 +4,7 @@ var ROD_WIDTH = 0.4;        // Width of the bar centered around the y axis in cm
 var K = 9E9;
 
 // Variables
-var bar_charge = "+";       // Sign of the charge. Can be +,-, or nothing.
+var bar_charge = '+';       // Sign of the charge. Can be +,-, or nothing.
 var lambda = 0;             // Value of the slider in Coulombs.
 var is_inside = false;      // Is the mouse currently inside of the bar?
 var was_inside = false;     // Previous state of the variable is_inside.
@@ -12,7 +12,7 @@ var was_inside = false;     // Previous state of the variable is_inside.
 // p$ Objects
 var w;
 var position = new p$.Box( {debug: false, isDraggable: false, color: p$.BOX_COLORS.GRAY } );
-var results = new p$.Box( { debug: false, title: "Resultados", display: true, isDraggable: false } );
+var results = new p$.Box( { debug: false, title: 'Resultados', display: true, isDraggable: false } );
 var particle = new p$.Ball(0.25, { color: p$.COLORS.PURPLE, topmostOnDrag: false, onMouseMove: particleMoved } );
 var bar = new p$.Shape(drawBar, {} );
 var field = new p$.Vector( { scale: 0.01, components: true, color: p$.COLORS.PURPLE } );
@@ -35,22 +35,22 @@ $(function() {
 function setup() {
   
   // Configure the world.
-  w = new p$.World("canvasContainer", draw, resize);
+  w = new p$.World('canvasContainer', draw, resize);
   w.axis.isDraggable = false;
-  w.scaleX.unit = "cm";
-  w.scaleY.unit = "cm";
+  w.scaleX.unit = 'cm';
+  w.scaleY.unit = 'cm';
 
   // Configure results box
   var LABEL_WIDTH = 60;
-  labels.e = results.addLabel(130, 14, { name: "Campo", units: "N/C", labelWidth: LABEL_WIDTH, decPlaces: 1 } );
+  labels.e = results.addLabel(130, 14, { name: 'Campo', units: 'N/C', labelWidth: LABEL_WIDTH, decPlaces: 1 } );
   labels.e.setPosition(0, 25);
-  labels.angle = results.addLabel(130, 14, { name: p$.SYMBOL.THETA, units: "°", labelWidth: LABEL_WIDTH, decPlaces: 0 } );
+  labels.angle = results.addLabel(130, 14, { name: p$.SYMBOL.THETA, units: '°', labelWidth: LABEL_WIDTH, decPlaces: 0 } );
   labels.angle.setPosition(0,50);
   results.calculateDimensions();
 
   // Configure position box.
-  labels.x = position.addLabel(50, 14, { name: "X:", decPlaces: 2, fixPlaces: true, labelWidth: 20, onClick: function() {setPosition('x')} });
-  labels.y = position.addLabel(50, 14, { name: "Y:", decPlaces: 2, fixPlaces: true, labelWidth: 20, onClick: function() {setPosition('y')} });
+  labels.x = position.addLabel(50, 14, { name: 'X:', decPlaces: 2, fixPlaces: true, labelWidth: 20, onClick: function() {setPosition('x')} });
+  labels.y = position.addLabel(50, 14, { name: 'Y:', decPlaces: 2, fixPlaces: true, labelWidth: 20, onClick: function() {setPosition('y')} });
   labels.x.setPosition(0, 0);
   labels.y.setPosition(60, 0);
   position.calculateDimensions();
@@ -75,7 +75,7 @@ function setup() {
  * Asks the user for a new component.
  */
 function setPosition(component) {
-  var raw = prompt('Posición -' + component + ":", labels[component].value.trim());
+  var raw = prompt('Posición -' + component + ':', labels[component].value.trim());
   var num = parseFloat(raw);
   if (!isNaN(num)) {
     particle.position[component] = num;
@@ -89,7 +89,7 @@ function setPosition(component) {
 function setupControls() {
 
   // Configure sliders.
-  controls.lambda = new p$.Slider({ id: "density", start: 2, min: -10, max: 10, decPlaces: 1, units: "nC/m", callback: reset });
+  controls.lambda = new p$.Slider({ id: 'density', start: 2, min: -10, max: 10, decPlaces: 1, units: 'nC/m', callback: reset });
   
 }
 

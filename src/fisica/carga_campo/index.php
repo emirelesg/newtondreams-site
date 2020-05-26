@@ -103,7 +103,6 @@
     <script src="../../js/nouislider.min.js"></script>
     <script src="../../js/feather.min.js"></script>
     <script src="../../js/core/dist/app.bundle.js"></script>
-    <script src="particle-functions.js"></script>
     <script src="main.js"></script>
     <script>
         feather.replace()
