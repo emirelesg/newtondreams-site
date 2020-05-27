@@ -1,26 +1,74 @@
 require('dotenv').config();
-const jsftp = require("jsftp");
+const chalk = require('chalk');
+const jsftp = require('jsftp');
 const path = require('path');
 const fs = require('fs');
+const argv = require('minimist')(process.argv.slice(2));
+const md5 = require('md5');
 
-const localBaseDir = 'src';
-const remoteBaseDir = '.';
+class HashMap {
+  constructor() {
+    this.file = 'hashes.json';
+    this.hashes = this.loadHashes(this.file);
+  }
+  loadHashes() {
+    if (fs.existsSync(this.file)) {
+      const data = fs.readFileSync(this.file, 'utf-8');
+      return JSON.parse(data);
+    }
+    return {};
+  }
+  md5(file) {
+    const buf = fs.readFileSync(file);
+    return md5(buf);
+  }
+  compareHash(file) {
+    const hash = this.md5(file);
+    if (this.hashes[file]) {
+      return this.hashes[file] === hash;
+    }
+    this.hashes[file] = hash;
+    return false;
+  }
+  saveHashes() {
+    console.log(chalk`Saving hash map to {bold ${this.file}}`);
+    const data = `${JSON.stringify(this.hashes, null, 2)}\n`;
+    fs.writeFileSync(this.file, data, {
+      encoding: 'utf-8'
+    });
+  }
+}
+const hash = new HashMap();
 
-// const localBaseDir = '../../covid19-mx/dist';
-// const remoteBaseDir = 'covid19';
+// let localBaseDir = '../../covid19-mx/dist';
+// let remoteBaseDir = 'covid19';
+let localBaseDir = 'src';
+let remoteBaseDir = '.';
 
-const ignoreRemote = [
+const ignore = [
+  // dirs
   'js/core',
   'js/core_3d',
   'covid19',
   'mandelbrot',
   '.well-known',
+  'fisica/vectores_3d/src',
   'fisica/_template',
+  'divyx/descargas',
+  // files
   'divyx/protected/descargas_divyx_sistema_anterior.csv',
   'divyx/protected/log.csv',
   '.ftpquota'
-];
- 
+].map(p => path.normalize(p));
+
+const DRY_RUN = argv['dry-run'] || false;
+if (DRY_RUN) {
+  console.log(chalk`{red *DRY RUN* }`);
+}
+
+localBaseDir = path.normalize(localBaseDir);
+remoteBaseDir = path.normalize(remoteBaseDir);
+
 const ftp = new jsftp({
   host: process.env.FTP_HOST,
   port: process.env.FTP_PORT,
@@ -28,7 +76,7 @@ const ftp = new jsftp({
   pass: process.env.FTP_PASSWORD
 });
 
-const accept = p => ignoreRemote.indexOf(p) < 0;
+const accept = p => ignore.indexOf(p) < 0;
 
 function lsLocal(dir) {
   return fs.readdirSync(dir).reduce(
@@ -43,35 +91,143 @@ function lsLocal(dir) {
       }
       return a;
     },
-    { files: [], dirs: [] }
+    { dir, files: [], dirs: [] }
   );
 }
 
-async function ls(dir) {
+function ls(dir) {
   return new Promise((resolve, reject) => {
-    ftp.ls((dir), (err, res) => {
+    ftp.ls(dir, (err, res) => {
       if (err) {
         reject(err);
       } else {
         resolve({
-          files: res.filter(t => t.type === 0).map(t => path.join(dir, t.name)).filter(accept),
-          dirs: res.filter(t => t.type === 1).map(t => path.join(dir, t.name)).filter(accept),
+          dir,
+          files: res
+            .filter(t => t.type === 0)
+            .map(t => path.join(dir, t.name))
+            .filter(accept),
+          dirs: res
+            .filter(t => t.type === 1)
+            .map(t => path.join(dir, t.name))
+            .filter(accept)
         });
       }
-    })
-  })
+    });
+  });
 }
 
-async function raw(command) {
+function raw(command, args) {
   return new Promise((resolve, reject) => {
-    ftp.raw(command, (err, res) => {
+    ftp.raw(command, args, (err, res) => {
       if (err) {
         reject(err);
       } else {
         resolve(res);
       }
-    })
-  })
+    });
+  });
+}
+
+function upload(local, remote, isInRemote) {
+  if (hash.compareHash(local)) {
+    console.log(chalk`{grey Skipping ${local} -> ${localToRemote(remote)}}`);
+  } else {
+    if (isInRemote) {
+      console.log(chalk`{blue Uploading ${local} -> ${localToRemote(remote)}}`);
+    } else {
+      console.log(
+        chalk`{green Uploading ${local} -> ${localToRemote(remote)}}`
+      );
+    }
+  }
+  if (DRY_RUN) return true;
+  return new Promise((resolve, reject) => {
+    fs.readFile(local, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        ftp.put(data, remote, err => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(true);
+          }
+        });
+      }
+    });
+  });
+}
+
+function rm(remote) {
+  console.log(chalk`{red Removing ${remote}}`);
+  if (DRY_RUN) return true;
+  return new Promise((resolve, reject) => {
+    raw('dele', remote)
+      .then(() => resolve(remote))
+      .catch(err => reject(err));
+  });
+}
+
+function rmdir(remote) {
+  console.log(chalk`{yellow Removing ${remote}}`);
+  if (DRY_RUN) return true;
+  return new Promise((resolve, reject) => {
+    raw('rmd', remote)
+      .then(() => resolve(remote))
+      .catch(err => reject(err));
+  });
+}
+
+async function rmdirFull(remote) {
+  const { files, dirs } = await ls(remote);
+
+  // Delete all files inside folder.
+  await files.reduce(
+    (lastPromise, file) =>
+      lastPromise.then(() => {
+        return rm(file);
+      }),
+    Promise.resolve()
+  );
+
+  // For each dir call the rmdirFull function to remote all files inside.
+  await dirs.reduce(
+    (lastPromise, dir) =>
+      lastPromise.then(() => {
+        return rmdirFull(dir);
+      }),
+    Promise.resolve()
+  );
+
+  // Since remote does not have more files/dirs it can be removed.
+  return rmdir(remote);
+}
+
+function mkdir(remote) {
+  console.log(chalk`{green Making ${remote}}`);
+  if (DRY_RUN) return true;
+  return new Promise((resolve, reject) => {
+    raw('mkd', remote)
+      .then(() => resolve(remote))
+      .catch(err => reject(err));
+  });
+}
+
+function mkdirFull(remote) {
+  return remote.split(path.sep).reduce(
+    (lastPromise, subdir) =>
+      lastPromise
+        .then(currentDir => ls(currentDir))
+        .then(({ dir, dirs }) => {
+          const completePath = path.join(dir, subdir);
+          if (dirs.indexOf(subdir) === -1) {
+            return mkdir(completePath);
+          }
+          return completePath;
+        }),
+    Promise.resolve('.')
+  );
 }
 
 function localToRemote(local) {
@@ -85,51 +241,72 @@ function remoteToLocal(remote) {
 }
 
 async function sync(subdir) {
-
-  const indent = Array(subdir.split(path.sep).length - 1).fill('\t').join('');
-  console.log(`${indent}Checking subdir: ${subdir}`)
-
+  console.log(chalk`Subdir: {bold ${subdir}}`);
 
   const localPath = path.join(localBaseDir, subdir);
   const remotePath = path.join(remoteBaseDir, subdir);
-
   const local = lsLocal(localPath);
   const remote = await ls(remotePath);
 
-  local.files.forEach(file => {
-    console.log(`${indent}Uploading ${file} -> ${localToRemote(file)} | ${remote.files.indexOf(localToRemote(file)) > -1}`)
-  });
+  // Upload local files to remote.
+  await local.files.reduce(
+    (lastPromise, file) =>
+      lastPromise.then(() => {
+        return upload(
+          file,
+          localToRemote(file),
+          remote.files.indexOf(localToRemote(file)) > -1
+        );
+      }),
+    Promise.resolve()
+  );
 
-  local.dirs.forEach(dir => {
-    if (remote.dirs.indexOf(localToRemote(dir)) < 0) {
-      console.log(`${indent}Making remote ${dir} -> ${localToRemote(dir)}`);
-    }
-  });
+  // Remove remote files that are not found in local.
+  await remote.files.reduce(
+    (lastPromise, file) =>
+      lastPromise.then(() => {
+        if (local.files.indexOf(remoteToLocal(file)) === -1) {
+          return rm(file);
+        }
+      }),
+    Promise.resolve()
+  );
 
-  remote.files.forEach(file => {
-    if (local.files.indexOf(remoteToLocal(file)) < 0) {
-      console.log(`${indent}Removing ${file} -> ${remoteToLocal(file)}`)
-    }
-  })
+  // Remove remote dirs that are not found in local.
+  await remote.dirs.reduce(
+    (lastPromise, dir) =>
+      lastPromise.then(() => {
+        if (local.dirs.indexOf(remoteToLocal(dir)) === -1) {
+          return rmdirFull(dir);
+        }
+      }),
+    Promise.resolve()
+  );
 
-  await local.dirs.reduce((lastPromise, dir) => {
-    return lastPromise.then(() => {
-      if (remote.dirs.indexOf(localToRemote(dir)) < 0) {
-        console.log(`${indent}Making remote ${dir} -> ${localToRemote(dir)}`);
-      }
-    }).then(() => sync(dir.replace(localBaseDir + '/', '')))
-  }, Promise.resolve())
-
-  // console.log(local);
-  // console.log(remote);
-
+  // Iterate through all dirs.
+  await local.dirs.reduce(
+    (lastPromise, dir) =>
+      lastPromise
+        // Make local dir if it does not exist.
+        .then(() => {
+          if (remote.dirs.indexOf(localToRemote(dir)) < 0) {
+            return mkdir(localToRemote(dir));
+          }
+        })
+        // Sync local subdir.
+        .then(() => sync(dir.replace(localBaseDir + '/', ''))),
+    Promise.resolve()
+  );
 }
 
 (async () => {
-
-  await sync('')
+  if (remoteBaseDir !== '.') {
+    await mkdirFull(remoteBaseDir);
+  }
+  await sync('');
   await raw('quit');
 
+  hash.saveHashes();
 })().catch(err => {
   console.error(err);
 });
