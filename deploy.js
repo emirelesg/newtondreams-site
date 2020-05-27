@@ -6,6 +6,12 @@ const fs = require('fs');
 const argv = require('minimist')(process.argv.slice(2));
 const md5 = require('md5');
 
+let ignore = [];
+if (fs.existsSync('.ftp-ignore')) {
+  const data = fs.readFileSync('.ftp-ignore', 'utf-8');
+  ignore = data.split('\n').map(p => path.normalize(p));
+}
+
 class HashMap {
   constructor() {
     this.file = 'hashes.json';
@@ -21,8 +27,7 @@ class HashMap {
   }
   md5(file) {
     if (this.sums[file]) return this.sums[file];
-    const buf = fs.readFileSync(file);
-    this.sums[file] = md5(buf);
+    this.sums[file] = md5(fs.readFileSync(file));
     return this.sums[file];
   }
   compareHash(file) {
@@ -42,34 +47,13 @@ class HashMap {
 }
 const hash = new HashMap();
 
-// let localBaseDir = '../../covid19-mx/dist';
-// let remoteBaseDir = 'covid19';
-let localBaseDir = 'src';
-let remoteBaseDir = '.';
-
-const ignore = [
-  // dirs
-  'js/core',
-  'js/core_3d',
-  'covid19',
-  'mandelbrot',
-  '.well-known',
-  'fisica/vectores_3d/src',
-  'fisica/_template',
-  'divyx/descargas',
-  // files
-  'divyx/protected/descargas_divyx_sistema_anterior.csv',
-  'divyx/protected/log.csv',
-  '.ftpquota'
-].map(p => path.normalize(p));
-
 const DRY_RUN = argv['dry-run'] || false;
 if (DRY_RUN) {
   console.log(chalk`{red *DRY RUN* }`);
 }
 
-localBaseDir = path.normalize(localBaseDir);
-remoteBaseDir = path.normalize(remoteBaseDir);
+const localBaseDir = path.normalize(process.env.FTP_LOCAL_DIR);
+const remoteBaseDir = path.normalize(process.env.FTP_REMOTE_DIR);
 
 const ftp = new jsftp({
   host: process.env.FTP_HOST,
