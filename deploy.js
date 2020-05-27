@@ -10,6 +10,7 @@ class HashMap {
   constructor() {
     this.file = 'hashes.json';
     this.hashes = this.loadHashes(this.file);
+    this.sums = {};
   }
   loadHashes() {
     if (fs.existsSync(this.file)) {
@@ -19,16 +20,17 @@ class HashMap {
     return {};
   }
   md5(file) {
+    if (this.sums[file]) return this.sums[file];
     const buf = fs.readFileSync(file);
-    return md5(buf);
+    this.sums[file] = md5(buf);
+    return this.sums[file];
   }
   compareHash(file) {
     const hash = this.md5(file);
-    if (this.hashes[file]) {
-      return this.hashes[file] === hash;
-    }
-    this.hashes[file] = hash;
-    return false;
+    return this.hashes[file] && this.hashes[file] === hash;
+  }
+  addHash(file) {
+    this.hashes[file] = this.md5(file);
   }
   saveHashes() {
     console.log(chalk`Saving hash map to {bold ${this.file}}`);
@@ -132,6 +134,7 @@ function raw(command, args) {
 function upload(local, remote, isInRemote) {
   if (hash.compareHash(local)) {
     console.log(chalk`{grey Skipping ${local} -> ${localToRemote(remote)}}`);
+    return true;
   } else {
     if (isInRemote) {
       console.log(chalk`{blue Uploading ${local} -> ${localToRemote(remote)}}`);
@@ -151,6 +154,7 @@ function upload(local, remote, isInRemote) {
           if (err) {
             reject(err);
           } else {
+            hash.addHash(local);
             resolve(true);
           }
         });
