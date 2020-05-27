@@ -1,74 +1,30 @@
 require('dotenv').config();
 const chalk = require('chalk');
-const jsftp = require('jsftp');
 const path = require('path');
 const fs = require('fs');
 const argv = require('minimist')(process.argv.slice(2));
-const md5 = require('md5');
+const FileHashMap = require('./hash');
+const Ftp = require('./ftp');
 
-let ignore = [];
-if (fs.existsSync('.ftp-ignore')) {
-  const data = fs.readFileSync('.ftp-ignore', 'utf-8');
-  ignore = data.split('\n').map(p => path.normalize(p));
-}
+const ftpp = new Ftp(
+  {
+    host: process.env.FTP_HOST,
+    port: process.env.FTP_PORT,
+    user: process.env.FTP_USERNAME,
+    pass: process.env.FTP_PASSWORD
+  },
+  argv['dry-run'] || false
+);
 
-class HashMap {
-  constructor() {
-    this.file = 'hashes.json';
-    this.hashes = this.loadHashes(this.file);
-    this.sums = {};
-  }
-  loadHashes() {
-    if (fs.existsSync(this.file)) {
-      const data = fs.readFileSync(this.file, 'utf-8');
-      return JSON.parse(data);
-    }
-    return {};
-  }
-  md5(file) {
-    if (this.sums[file]) return this.sums[file];
-    this.sums[file] = md5(fs.readFileSync(file));
-    return this.sums[file];
-  }
-  compareHash(file) {
-    const hash = this.md5(file);
-    return this.hashes[file] && this.hashes[file] === hash;
-  }
-  addHash(file) {
-    this.hashes[file] = this.md5(file);
-  }
-  saveHashes() {
-    console.log(chalk`Saving hash map to {bold ${this.file}}`);
-    const data = `${JSON.stringify(this.hashes, null, 2)}\n`;
-    fs.writeFileSync(this.file, data, {
-      encoding: 'utf-8'
-    });
-  }
-}
-const hash = new HashMap();
-
-const DRY_RUN = argv['dry-run'] || false;
-if (DRY_RUN) {
-  console.log(chalk`{red *DRY RUN* }`);
-}
-
+const hash = new FileHashMap();
 const localBaseDir = path.normalize(process.env.FTP_LOCAL_DIR);
 const remoteBaseDir = path.normalize(process.env.FTP_REMOTE_DIR);
-
-const ftp = new jsftp({
-  host: process.env.FTP_HOST,
-  port: process.env.FTP_PORT,
-  user: process.env.FTP_USERNAME,
-  pass: process.env.FTP_PASSWORD
-});
-
-const accept = p => ignore.indexOf(p) < 0;
 
 function lsLocal(dir) {
   return fs.readdirSync(dir).reduce(
     (a, file) => {
       const fullPath = path.join(dir, file);
-      if (accept(localToRemote(fullPath))) {
+      if (ftpp.filter(localToRemote(fullPath))) {
         if (fs.lstatSync(fullPath).isDirectory()) {
           a.dirs.push(fullPath);
         } else {
@@ -78,143 +34,6 @@ function lsLocal(dir) {
       return a;
     },
     { dir, files: [], dirs: [] }
-  );
-}
-
-function ls(dir) {
-  return new Promise((resolve, reject) => {
-    ftp.ls(dir, (err, res) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({
-          dir,
-          files: res
-            .filter(t => t.type === 0)
-            .map(t => path.join(dir, t.name))
-            .filter(accept),
-          dirs: res
-            .filter(t => t.type === 1)
-            .map(t => path.join(dir, t.name))
-            .filter(accept)
-        });
-      }
-    });
-  });
-}
-
-function raw(command, args) {
-  return new Promise((resolve, reject) => {
-    ftp.raw(command, args, (err, res) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(res);
-      }
-    });
-  });
-}
-
-function upload(local, remote, isInRemote) {
-  if (hash.compareHash(local)) {
-    console.log(chalk`{grey Skipping ${local} -> ${localToRemote(remote)}}`);
-    return true;
-  } else {
-    if (isInRemote) {
-      console.log(chalk`{blue Uploading ${local} -> ${localToRemote(remote)}}`);
-    } else {
-      console.log(
-        chalk`{green Uploading ${local} -> ${localToRemote(remote)}}`
-      );
-    }
-  }
-  if (DRY_RUN) return true;
-  return new Promise((resolve, reject) => {
-    fs.readFile(local, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        ftp.put(data, remote, err => {
-          if (err) {
-            reject(err);
-          } else {
-            hash.addHash(local);
-            resolve(true);
-          }
-        });
-      }
-    });
-  });
-}
-
-function rm(remote) {
-  console.log(chalk`{red Removing ${remote}}`);
-  if (DRY_RUN) return true;
-  return new Promise((resolve, reject) => {
-    raw('dele', remote)
-      .then(() => resolve(remote))
-      .catch(err => reject(err));
-  });
-}
-
-function rmdir(remote) {
-  console.log(chalk`{yellow Removing ${remote}}`);
-  if (DRY_RUN) return true;
-  return new Promise((resolve, reject) => {
-    raw('rmd', remote)
-      .then(() => resolve(remote))
-      .catch(err => reject(err));
-  });
-}
-
-async function rmdirFull(remote) {
-  const { files, dirs } = await ls(remote);
-
-  // Delete all files inside folder.
-  await files.reduce(
-    (lastPromise, file) =>
-      lastPromise.then(() => {
-        return rm(file);
-      }),
-    Promise.resolve()
-  );
-
-  // For each dir call the rmdirFull function to remote all files inside.
-  await dirs.reduce(
-    (lastPromise, dir) =>
-      lastPromise.then(() => {
-        return rmdirFull(dir);
-      }),
-    Promise.resolve()
-  );
-
-  // Since remote does not have more files/dirs it can be removed.
-  return rmdir(remote);
-}
-
-function mkdir(remote) {
-  console.log(chalk`{green Making ${remote}}`);
-  if (DRY_RUN) return true;
-  return new Promise((resolve, reject) => {
-    raw('mkd', remote)
-      .then(() => resolve(remote))
-      .catch(err => reject(err));
-  });
-}
-
-function mkdirFull(remote) {
-  return remote.split(path.sep).reduce(
-    (lastPromise, subdir) =>
-      lastPromise
-        .then(currentDir => ls(currentDir))
-        .then(({ dir, dirs }) => {
-          const completePath = path.join(dir, subdir);
-          if (dirs.indexOf(subdir) === -1) {
-            return mkdir(completePath);
-          }
-          return completePath;
-        }),
-    Promise.resolve('.')
   );
 }
 
@@ -234,17 +53,24 @@ async function sync(subdir) {
   const localPath = path.join(localBaseDir, subdir);
   const remotePath = path.join(remoteBaseDir, subdir);
   const local = lsLocal(localPath);
-  const remote = await ls(remotePath);
+  const remote = await ftpp.ls(remotePath);
 
   // Upload local files to remote.
   await local.files.reduce(
     (lastPromise, file) =>
       lastPromise.then(() => {
-        return upload(
-          file,
-          localToRemote(file),
-          remote.files.indexOf(localToRemote(file)) > -1
-        );
+        const fileRemote = localToRemote(file);
+        if (hash.compare(file)) {
+          console.log(chalk`{grey Skipping ${file} -> ${fileRemote}}`);
+          return true;
+        }
+        hash.add(local);
+        if (remote.files.indexOf(fileRemote) > -1) {
+          console.log(chalk`{blue Uploading ${file} -> ${fileRemote}}`);
+        } else {
+          console.log(chalk`{green Uploading ${file} -> ${fileRemote}}`);
+        }
+        return ftpp.putBuffer(fs.readFileSync(local), remote);
       }),
     Promise.resolve()
   );
@@ -254,7 +80,8 @@ async function sync(subdir) {
     (lastPromise, file) =>
       lastPromise.then(() => {
         if (local.files.indexOf(remoteToLocal(file)) === -1) {
-          return rm(file);
+          hash.remove(remoteToLocal(file));
+          return ftpp.rm(file);
         }
       }),
     Promise.resolve()
@@ -265,20 +92,20 @@ async function sync(subdir) {
     (lastPromise, dir) =>
       lastPromise.then(() => {
         if (local.dirs.indexOf(remoteToLocal(dir)) === -1) {
-          return rmdirFull(dir);
+          return ftpp.rmdirRecursive(dir);
         }
       }),
     Promise.resolve()
   );
 
-  // Iterate through all dirs.
+  // Iterate through all dirs and sync them
   await local.dirs.reduce(
     (lastPromise, dir) =>
       lastPromise
-        // Make local dir if it does not exist.
+        // Make local subdir in remote if it does not exist.
         .then(() => {
-          if (remote.dirs.indexOf(localToRemote(dir)) < 0) {
-            return mkdir(localToRemote(dir));
+          if (remote.dirs.indexOf(localToRemote(dir)) === -1) {
+            return ftpp.mkdir(localToRemote(dir));
           }
         })
         // Sync local subdir.
@@ -288,13 +115,17 @@ async function sync(subdir) {
 }
 
 (async () => {
-  if (remoteBaseDir !== '.') {
-    await mkdirFull(remoteBaseDir);
-  }
-  await sync('');
-  await raw('quit');
+  // Load hashes from the ftp server.
+  hash.hashes = await ftpp.getJSON(path.join(remoteBaseDir, '.hashes'));
 
-  hash.saveHashes();
-})().catch(err => {
-  console.error(err);
-});
+  // Make base dir in ftp server.
+  if (remoteBaseDir !== '.') await ftpp.mkdirFull(remoteBaseDir);
+
+  // Sync local and remote dirs.
+  await sync('');
+
+  // Upload the updated hashes to the server.
+  await ftpp.putJSON(hash.hashes, path.join(remoteBaseDir, '.hashes'));
+})()
+  .catch(err => console.error(err))
+  .finally(() => ftpp.quit());
