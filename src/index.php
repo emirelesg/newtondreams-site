@@ -31,7 +31,7 @@
    
     <nav class="navbar navbar-expand-md navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="<?php echo $nav_items['home']['url'] ?>">NewtonDreamss</a>
+            <a class="navbar-brand" href="<?php echo $nav_items['home']['url'] ?>">NewtonDreams</a>
             <a class="navbar-brand" href="http://www.udem.edu.mx">
                 <img src="img/logo_y.jpg" alt="Universidad de Monterrey">
             </a>
