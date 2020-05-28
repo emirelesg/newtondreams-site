@@ -24,4 +24,4 @@ jobs:
         remoteDir: "."
       env:
         FORCE_COLOR: 1
-        DRY_RUN: true
+        DRY_RUN: false

@@ -43,7 +43,7 @@
             <section>
                 <div class="row">
                     <div class="col">
-                        <h1><?php echo $active_sim['name']; ?>   -ssasdsa</h1>
+                        <h1><?php echo $active_sim['name']; ?></h1>
                         <h5 class="text-muted subtitle">Versión <?php echo $active_sim['ver']; ?></h5>
                         <p class="lead"><?php echo $active_sim['desc']; ?></p>
                     </div>        
