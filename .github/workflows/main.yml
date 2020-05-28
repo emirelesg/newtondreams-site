@@ -23,6 +23,5 @@ jobs:
         localDir: "src"
         remoteDir: "."
       env:
-        PROJECT_DIR:
         FORCE_COLOR: 1
         DRY_RUN: false
