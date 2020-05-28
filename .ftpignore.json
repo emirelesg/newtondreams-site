@@ -1,0 +1,19 @@
+{
+  "local": [
+    "src/fisica/vectores_3d/src",
+    "src/js/core",
+    "src/js/core_3d"
+  ],
+  "remote": [
+    "js/core",
+    "js/core_3d",
+    "covid19",
+    "mandelbrot",
+    "fisica/_template",
+    "divyx/descargas",
+    "divyx/protected/descargas_divyx_sistema_anterior.csv",
+    "divyx/protected/log.csv",
+    ".well-known",
+    ".ftpquota"
+  ]
+}
