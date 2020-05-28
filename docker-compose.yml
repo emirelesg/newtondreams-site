@@ -8,5 +8,5 @@ services:
             - "3000:80"
         volumes:
             - ./src/:/var/www/html/
-            - ../newtondreams-lib/dist/:/var/www/html/js/core/dist/
-            - ../newtondreams-lib/docs/:/var/www/html/js/core/docs/
+            - ../newtondreams-lib/dist/dist/:/var/www/html/js/core/dist/
+            - ../newtondreams-lib/dist/docs/:/var/www/html/js/core/docs/
