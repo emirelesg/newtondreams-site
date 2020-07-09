@@ -142,8 +142,8 @@
             "name"  => "Trabajo",
             "desc"  => "Calcula el trabajo realizado por una fuerza.",
             "url"   => "$base/fisica/trabajo/",
-            "ver"   => "1.0.0",
-            "date"  => "06/02/2020"
+            "ver"   => "1.1.0",
+            "date"  => "10/07/2020"
         ),
         "transferencia_calor" => array(
            "name"  => "Transferencia de calor",

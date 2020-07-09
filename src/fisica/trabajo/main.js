@@ -62,21 +62,33 @@ function setup() {
   labels.accel = results.addLabel(135, 14, {
     name: 'Accel',
     units: 'm/s²',
-    labelWidth: 70
+    labelWidth: 80
   });
   labels.work = results.addLabel(135, 14, {
     name: 'Trabajo',
     units: 'J',
-    labelWidth: 70
+    labelWidth: 80
   });
   labels.t = results.addLabel(135, 14, {
     name: 't',
     units: 's',
-    labelWidth: 70
+    labelWidth: 80
+  });
+  labels.x = results.addLabel(135, 14, {
+    name: 'Distancia',
+    units: 'm',
+    labelWidth: 80
+  });
+  labels.kinetic = results.addLabel(135, 14, {
+    name: 'E. Cinética',
+    units: 'J',
+    labelWidth: 80
   });
   labels.accel.setPosition(0, 25);
-  labels.work.setPosition(0, 50);
-  labels.t.setPosition(0, 75);
+  labels.x.setPosition(0, 50);
+  labels.work.setPosition(0, 75);
+  labels.kinetic.setPosition(0, 100);
+  labels.t.setPosition(0, 125);
   results.calculateDimensions();
 
   // Configure plot.
@@ -280,8 +292,13 @@ function draw() {
   force.setPosition(box.x0 + box.d + box.halfSide, box.y0);
 
   // Set labels.
+  var t = plots.distance[frame][0];
+  var vel = box.ax * t;
+  var kineticEnergy = 0.5 * controls.mass.value * vel * vel;
   labels.accel.set(box.ax);
-  labels.t.set(plots.distance[frame][0]);
+  labels.t.set(t);
+  labels.x.set(plots.distance[frame][1]);
+  labels.kinetic.set(kineticEnergy);
   labels.work.set(plots.work.points[frame][0] * plots.work.points[frame][1]);
 }
 
