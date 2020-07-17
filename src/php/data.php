@@ -264,6 +264,12 @@
             "url"   => "$base/display.php?s=math",
             "sim"   => $math
         ),
+        "lab" => array(
+            "name"  => "Lab",
+            "desc"  => "Realiza tus prácticas de laboratorio en un ambiente en 3D.",
+            "url"   => "$base/lab",
+            "sim"   => array()
+        ),
         "divyx" => array(
             "name"  => "DivYX",
             "desc"  => "Analiza el movimiento de objetos por video.",
